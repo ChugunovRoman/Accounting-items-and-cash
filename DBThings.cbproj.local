@@ -1,0 +1,83 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<BorlandProject>
+	<Transactions>
+    <Transaction>1899.12.30 00:00:00.000.806,D:\Учеба\C++ Project\DB Things\Unit5.dfm=D:\Учеба\C++ Project\DB Things\UnitNC.dfm</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.595,D:\Учеба\C++ Project\DB Things\Unit5.dfm=D:\Учеба\C++ Project\DB Things\UnitCalc.dfm</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.722,D:\Учеба\C++ Project\DBThings\File1DLL.cpp=</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.382,D:\Учеба\C++ Project\DB Things\DBThings.cbproj=D:\Учеба\C++ Project\DB Things\ProjectDBThings.cbproj</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.927,=D:\Учеба\C++ Project\DBThings\File1DLL.cpp</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.806,D:\Учеба\C++ Project\DB Things\Unit5.h=D:\Учеба\C++ Project\DB Things\UnitNC.h</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.949,D:\Учеба\C++ Project\DB Things\Unit5.h=D:\Учеба\C++ Project\DB Things\UnitResource.h</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.459,D:\Учеба\C++ Project\DB Things\Unit5.h=D:\Учеба\C++ Project\DB Things\UnitCosts.h</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.949,D:\Учеба\C++ Project\DB Things\Unit5.dfm=D:\Учеба\C++ Project\DB Things\UnitResource.dfm</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.459,D:\Учеба\C++ Project\DB Things\Unit5.dfm=D:\Учеба\C++ Project\DB Things\UnitCosts.dfm</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.543,C:\Users\Ronmaru\Documents\RAD Studio\Projects\Unit1.dfm=C:\Users\Ronmaru\Documents\RAD Studio\Projects\UnitDBThings.dfm</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.328,C:\Users\Ronmaru\Documents\RAD Studio\Projects\Unit2.dfm=C:\Users\Ronmaru\Documents\RAD Studio\Projects\Unit2DBThings.dfm</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.046,=C:\Users\Ronmaru\Documents\RAD Studio\Projects\Unit3.cpp</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.716,D:\Учеба\C++ Project\DB Things\ProjectDBThings.res=</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.920,D:\Учеба\C++ Project\DB Things\Unit4.h=D:\Учеба\C++ Project\DB Things\UnitSettings.h</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.412,=D:\Учеба\C++ Project\DB Things\ProjectDBThings.res</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.328,C:\Users\Ronmaru\Documents\RAD Studio\Projects\Unit2.cpp=C:\Users\Ronmaru\Documents\RAD Studio\Projects\Unit2DBThings.cpp</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.197,=C:\Users\Ronmaru\Documents\RAD Studio\Projects\Unit2.cpp</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.109,=D:\Учеба\C++ Project\DB Things\Unit4.cpp</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.653,C:\Users\Ronmaru\Documents\RAD Studio\Projects\Unit3.cpp=C:\Users\Ronmaru\Documents\RAD Studio\Projects\UnitImgBig.cpp</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.920,D:\Учеба\C++ Project\DB Things\Unit4.cpp=D:\Учеба\C++ Project\DB Things\UnitSettings.cpp</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.323,=C:\Users\Ronmaru\Documents\RAD Studio\Projects\Unit1.cpp</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.147,=D:\Учеба\C++ Project\DB Things\DBThings.mdb</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.543,C:\Users\Ronmaru\Documents\RAD Studio\Projects\Unit1.cpp=C:\Users\Ronmaru\Documents\RAD Studio\Projects\UnitDBThings.cpp</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.328,C:\Users\Ronmaru\Documents\RAD Studio\Projects\Unit2.h=C:\Users\Ronmaru\Documents\RAD Studio\Projects\Unit2DBThings.h</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.934,C:\Users\Ronmaru\Documents\RAD Studio\Projects\Project1.cbproj=C:\Users\Ronmaru\Documents\RAD Studio\Projects\ProjectDBThings.cbproj</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.872,C:\Users\Ronmaru\Documents\RAD Studio\Projects\Project1PCH1.h=C:\Users\Ronmaru\Documents\RAD Studio\Projects\ProjectDBThingsPCH1.h</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.347,D:\Учеба\C++ Project\DB Things\DBThingsPCH1.h=D:\Учеба\C++ Project\DB Things\ProjectDBThingsPCH1.h</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.312,=C:\Users\Ronmaru\Documents\RAD Studio\Projects\Project1PCH1.h</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.654,C:\Users\Ronmaru\Documents\RAD Studio\Projects\Unit3.dfm=C:\Users\Ronmaru\Documents\RAD Studio\Projects\UnitImgBig.dfm</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.543,C:\Users\Ronmaru\Documents\RAD Studio\Projects\Unit1.h=C:\Users\Ronmaru\Documents\RAD Studio\Projects\UnitDBThings.h</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.920,D:\Учеба\C++ Project\DB Things\Unit4.dfm=D:\Учеба\C++ Project\DB Things\UnitSettings.dfm</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.949,D:\Учеба\C++ Project\DB Things\Unit5.cpp=D:\Учеба\C++ Project\DB Things\UnitResource.cpp</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.459,D:\Учеба\C++ Project\DB Things\Unit5.cpp=D:\Учеба\C++ Project\DB Things\UnitCosts.cpp</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.806,D:\Учеба\C++ Project\DB Things\Unit5.cpp=D:\Учеба\C++ Project\DB Things\UnitNC.cpp</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.595,D:\Учеба\C++ Project\DB Things\Unit5.h=D:\Учеба\C++ Project\DB Things\UnitCalc.h</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.654,C:\Users\Ronmaru\Documents\RAD Studio\Projects\Unit3.h=C:\Users\Ronmaru\Documents\RAD Studio\Projects\UnitImgBig.h</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.392,=D:\Учеба\C++ Project\DB Things\Unit5.cpp</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.495,=D:\Учеба\C++ Project\DB Things\Unit5.cpp</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.595,D:\Учеба\C++ Project\DB Things\Unit5.cpp=D:\Учеба\C++ Project\DB Things\UnitCalc.cpp</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.934,=D:\Учеба\C++ Project\DB Things\Unit5.cpp</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.246,=D:\Учеба\C++ Project\DB Things\Unit5.cpp</Transaction>
+  </Transactions>
+	<ProjectSortOrder AutoSort="0" SortType="0">
+    <File Path="DBThings.cpp"/>
+    <File Path="DBThingsPCH1.h"/>
+    <File Path="Unit2DBThings.cpp"/>
+    <File Path="Unit2DBThings.cpp"/>
+    <File Path="Unit2DBThings.dfm"/>
+    <File Path="Unit2DBThings.h"/>
+    <File Path="UnitCalc.cpp"/>
+    <File Path="UnitCalc.cpp"/>
+    <File Path="UnitCalc.dfm"/>
+    <File Path="UnitCalc.h"/>
+    <File Path="UnitCosts.cpp"/>
+    <File Path="UnitCosts.cpp"/>
+    <File Path="UnitCosts.dfm"/>
+    <File Path="UnitCosts.h"/>
+    <File Path="UnitDBThings.cpp"/>
+    <File Path="UnitDBThings.cpp"/>
+    <File Path="UnitDBThings.dfm"/>
+    <File Path="UnitDBThings.h"/>
+    <File Path="UnitImgBig.cpp"/>
+    <File Path="UnitImgBig.cpp"/>
+    <File Path="UnitImgBig.dfm"/>
+    <File Path="UnitImgBig.h"/>
+    <File Path="UnitNC.cpp"/>
+    <File Path="UnitNC.cpp"/>
+    <File Path="UnitNC.dfm"/>
+    <File Path="UnitNC.h"/>
+    <File Path="UnitResource.cpp"/>
+    <File Path="UnitResource.cpp"/>
+    <File Path="UnitResource.dfm"/>
+    <File Path="UnitResource.h"/>
+    <File Path="UnitSettings.cpp"/>
+    <File Path="UnitSettings.cpp"/>
+    <File Path="UnitSettings.dfm"/>
+    <File Path="UnitSettings.h"/>
+  </ProjectSortOrder>
+</BorlandProject>

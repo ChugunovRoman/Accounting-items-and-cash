@@ -1,0 +1,709 @@
+﻿//-------------------------------------------------------------------------//
+//--	Учет любых вещеи и денежных средств. "Учет денежных средств"     --//
+//--      Примерная дата начала разработки проекта: 7-15.09.2015.        --//
+//--                        Выпуск версий:                               --//
+//--                    beta 1.0, 12.11.2015г                            --//
+//--			Разработчик Чугунов Роман Владимирович                   --//
+//--       			  e-mail: Zebs-BMK@yandex.ru                         --//
+//-------------------------------------------------------------------------//
+
+#include <vcl.h>
+#pragma hdrstop
+#include "PngImage.hpp" // Для работы с картинками формата .png
+//#include <memory.h> // Для работы с памятью
+//#include "string.h"
+#include <ComObj.hpp>
+
+// Подключение другию юнитов
+#include "UnitDBThings.h" // Заголовок главной формы
+#include "Unit2DBThings.h" // Заголовок второй формы (добавление или редактирование вещи)
+#include "UnitImgBig.h" // Заголовок формы увеличенной картинки
+#include "UnitSettings.h" // Заголовок формы настроек
+#include "UnitResource.h" // Форма ресурсов
+#include "UnitNC.h" // Форма добавлеения новой категории
+//---------------------------------------------------------------------------
+#pragma package(smart_init)
+#pragma resource "*.dfm"
+
+TForm1 *Form1;
+
+std::vector<TImage*> ImageFont; // Массив с изображениями
+std::vector<TLabel*> NameItem; // Массив с названиями вещей
+std::vector<TImage*> SelectBorderImage; // Массив для рамки
+std::vector<TCheckBox*> SelectThings; // Масив чекбоксов для выделения вещей
+std::vector<int> SelectedItems; // Выделительная рамка
+AnsiString array_category[50]; // Массив с названиями категорий
+
+int flag = 1;
+TPngImage *tmpPNG = new TPngImage; // Создаем указатель на объект типа TPngImage
+//std::auto_ptr < TPngImage > tmpPNG( new TPngImage ); // Выделяем память для tmpPNG
+TIniFile *IniFile = new TIniFile(ChangeFileExt(Application->ExeName, ".INI")); // создаем файл настроек
+
+//---------------------------------------------------------------------------
+__fastcall TForm1::TForm1(TComponent* Owner)
+	: TForm(Owner)
+{
+}
+//---------------------------------------------------------------------------
+void __fastcall TForm1::FormCreate(TObject *Sender)
+{
+    h = LoadLibrary(L"ProjectDLLIMG.dll"); // Тянем библу, она содержит элементы графического интерфейса
+    // Подключаемся к БД. Если ее нет, то вытаскиваем "чистый" файл БД из библы
+    TSearchRec src;
+    if(FindFirst("DBThings.mdb", faAnyFile, src) != 0) // Если файла БД нет, то создаем его
+    {
+        TResourceStream *dbFile = new TResourceStream((unsigned int)h, "DBThings", RT_RCDATA);
+        dbFile->SaveToFile("DBThings.mdb");
+        delete dbFile;
+    }
+    Form1->ADOConnection2->Connected = false;
+    Form1->ADOConnection2->ConnectionString = "Provider=Microsoft.Jet.OLEDB.4.0;User ID=Admin;Data Source="+GetCurrentDir()+"\\DBThings.mdb;Mode=Share Deny None;Jet OLEDB:System database="";Jet OLEDB:Registry Path="";Jet OLEDB:Database Password="";Jet OLEDB:Engine Type=5;Jet OLEDB:Database Locking Mode=1;Jet OLEDB:Global Partial Bulk Ops=2;Jet OLEDB:Global Bulk Transactions=1;Jet OLEDB:New Database Password="";Jet OLEDB:Create System Database=False;Jet OLEDB:Encrypt Database=False;Jet OLEDB:Don't Copy Locale on Compact=False;Jet OLEDB:Compact Without Replica Repair=False;Jet OLEDB:SFP=False;";
+    Form1->ADOConnection2->Connected = true;
+
+	NameOfCategory = "SELECT * FROM things"; // Переменная для хранения запросов для вывода вещей из выбранной категории в ComboBox1
+	// Если квери не актевирован, то проворачиваем запрос
+	if(ADOQuery1->Active == true)
+	{
+		ADOQuery1->Active == false;
+	}
+	ADOQuery1->SQL->Strings[0] = NameOfCategory;
+	ADOQuery1->Active = true;
+	ADOQuery1->FindFirst(); // Выбор первой записи в ADOQuery
+
+	SpeedScrollBox1 = IniFile->ReadInteger("Speed", "SpeedScrollBox1", 4); // Устанавливаем скорость прокрутки вещей в скроллбоксе
+	IconSizeThings = IniFile->ReadInteger("Size", "IconSizeThings", 2); // Устанавливаем размер иконок вещей
+
+	// Если переменная flag = 1, то мы вызываем функцию OutputThings() - она динамично создает объекты TImage и TLabel
+	// соответствующие каждой записи в таблтице
+
+	if(flag == 1)
+	{
+        flag = 0;
+		OutputThings();
+	}
+
+	// формирование списка с категориями
+	ADOQuery1->Active = false;
+	ADOQuery1->SQL->Strings[0] = "SELECT * FROM Category"; // Выборка без повторов
+	ADOQuery1->Active = true;
+	ADOQuery1->FindFirst(); // Выбор первой записи в ADOQuery
+	for(int i = 0; i < ADOQuery1->RecordCount; i++) // Цикл от 0 до последней записи в ADOQuery
+	{
+		ComboBox1->Items->Add(ADOQuery1->Fields->FieldByName("Category")->AsAnsiString); // Зполняем ComboBox1 категориями
+		ADOQuery1->Next(); // Выбор следующей строки в ADOQuery
+	}
+	ADOQuery1->FindFirst(); // Выбор первой записи в ADOQuery
+
+	ScrollBox1->HorzScrollBar->Tracking = true; // Вкл. горизонтальной плавной прокрутки
+	ScrollBox1->VertScrollBar->Tracking = true; // Вкл. вертикальной плавной прокрутки
+
+}
+//---------------------------------------------------------------------------
+//		Функция вывода объектов TImage и TLabel в зависимости от запроса   --
+//---------------------------------------------------------------------------
+int ImageFontWidth = 208, interval = 220, TopInterval = 280;
+void __fastcall TForm1::OutputThings()
+{
+	// Проворачиваем запрос
+	ADOQuery1->Active = false;
+	ADOQuery1->SQL->Strings[0] = NameOfCategory;
+	ADOQuery1->Active = true;
+	ADOQuery1->FindFirst(); // Выбор первой записи в ADOQuery
+
+	// Резервируем память под массивы динамических компонентов
+	// ADOQuery1->RecordCount+1 - под какое колличество элементов
+	// резервтируем память для массивов
+	ImageFont.reserve(ADOQuery1->RecordCount+1);
+	NameItem.reserve(ADOQuery1->RecordCount+1);
+	SelectBorderImage.reserve(ADOQuery1->RecordCount+1);
+	SelectThings.reserve(ADOQuery1->RecordCount+1);
+	SelectedItems.reserve(ADOQuery1->RecordCount+1);
+
+	// В соответствии с настройкой размера иконок вещей, устанавливаем заданный размер
+	switch(IconSizeThings)
+	{
+		// Маленькие
+		case 0:
+		{
+			ImageFontWidth = 208 - 68;
+			interval = 220 - 68;
+            TopInterval = 280 - 75;
+		} break;
+		// Средние
+		case 1:
+		{
+			ImageFontWidth = 208 - 38;
+			interval = 220 - 38;
+            TopInterval = 280 - 45;
+		} break;
+		// Большие (по умолчанию)
+		case 2:
+		{
+			ImageFontWidth = 208;
+			interval = 220;
+            TopInterval = 280;
+        } break;
+	}
+
+	// В соответствии запросу создаем объекты
+	int columntop = 0, i2 = 1;
+	//TCheckBox *SelectThings[100]; // Массии из флажков для выделения вещей
+	for(int i = 1; i <= ADOQuery1->RecordCount; i++)  // Динамическое создание объектов внитри ScrollBox'а
+	{
+		SelectBorderImage[i] = new TImage(Form1);
+		SelectBorderImage[i]->Parent = ScrollBox1;
+
+		ImageFont[i] = new TImage(Form1); // Создание объекта TImage
+		ImageFont[i]->Parent = ScrollBox1; // Задаем TImage'у родителя ScrollBox1
+
+		NameItem[i] = new TLabel(Form1); // Создание объекта TLabel
+		NameItem[i]->Parent = ScrollBox1; // Задаем TLabel'у родителя ScrollBox1
+
+
+		SelectThings[i] = new TCheckBox(Form1);
+		SelectThings[i]->Parent = ScrollBox1;
+
+		// Задаем позиционирование по динамической сетке
+		ImageFont[i]->Left = 10 + (ImageFontWidth + 22) * (i2 - 1);
+		//if(ImageFont[i]->Left+460 >= ScrollBox1->Width) // Если объект выходит за ширину ScrollBox'а то переносим его вниз
+		if(ImageFont[i]->BoundsRect.Right >= Form1->Width) // Если объект выходит за ширину ScrollBox'а то переносим его вниз
+		{
+			columntop++; // Увеличиваем, чтобы наши объекты били на следующей строке
+			i2 = 1; // Сбрасываем, чтобы наши объекты размещались с самого начала
+
+			SelectBorderImage[i]->Top = TopInterval * columntop;
+			SelectBorderImage[i]->Left = (ImageFontWidth + 22) * (i2 - 1);
+
+			ImageFont[i]->Top = 10 + TopInterval * columntop;
+			ImageFont[i]->Left = 10 + (ImageFontWidth + 22)  *(i2 - 1);
+
+			NameItem[i]->Top = interval + TopInterval * columntop;
+			NameItem[i]->Left = 10 + (ImageFontWidth + 22) * (i2 - 1);
+
+			SelectThings[i]->Top = 20 + TopInterval * columntop;
+			SelectThings[i]->Left = 200 + (ImageFontWidth + 22) * (i2 - 1);
+		}
+		else
+		{
+			SelectBorderImage[i]->Top = TopInterval * columntop;
+			SelectBorderImage[i]->Left = (ImageFontWidth + 22) * (i2 - 1);
+
+			ImageFont[i]->Top = 10 + TopInterval * columntop;
+			ImageFont[i]->Left = 10 + (ImageFontWidth + 22) * (i2 - 1);
+
+			NameItem[i]->Top = interval + TopInterval * columntop;
+			NameItem[i]->Left = 10 + (ImageFontWidth + 22) * (i2 - 1);
+
+			SelectThings[i]->Top = 20 + TopInterval * columntop;
+			SelectThings[i]->Left = 200 + (ImageFontWidth + 22) * (i2 - 1);
+		}
+        // Задаем свойства лицевой картинке
+		ImageFont[i]->Name = "ImageFont" + IntToStr(i); // Задаем имя объекту
+		ImageFont[i]->Height = ImageFontWidth; // Задаем высоту
+		ImageFont[i]->Width = ImageFontWidth; // Задаем ширину
+		ImageFont[i]->Stretch = true; // Растянуть картинку по кроям Image[i]? Да!
+		ImageFont[i]->Tag = ADOQuery1->Fields->FieldByName("ID")->AsInteger; // Задаем нашему объекту номер из поля "ID"
+		ImageFont[i]->OnClick = ImgEditClick; // Задаем событие при нажатии на картинку, она увеличивается
+		ImageFont[i]->PopupMenu = PopupMenu1;
+		ImageFont[i]->OnContextPopup = Label1->OnContextPopup;
+		ImageFont[i]->OnMouseEnter = ImageFontMouseEnter;
+		ImageFont[i]->OnMouseLeave = ImageFontMouseLeave;
+		//ImageFont[i]->Visible = true;
+
+
+        // Задаем свойства названию вещи
+		NameItem[i]->Tag = ADOQuery1->Fields->FieldByName("ID")->AsInteger; // Задаем нашему объекту номер из поля "ID"
+		NameItem[i]->Name = "LabelName" + IntToStr(i); // Задаем имя Label'у под картинкой
+		NameItem[i]->Caption = ADOQuery1->Fields->FieldByName("Name")->AsAnsiString; // Получаем имя каждой вещи
+        NameItem[i]->StyleElements =(TStyleElements() >> seFont);
+        NameItem[i]->Font->Color = IniFile->ReadInteger("Color", "FontColorName", 0x0);
+		//NameItem[i]->Width = 208; // Задаем ширину Label'а
+		NameItem[i]->WordWrap = true; // Перенос по словам? Да!
+		NameItem[i]->Width = ImageFontWidth; // Задаем ширину Label'а
+		//NameItem[i]->Height = 20;
+		NameItem[i]->Color = IniFile->ReadInteger("Color", "BGColorName", clGradientInactiveCaption); // Цвет фона Label'а
+		NameItem[i]->Alignment = taCenter; // Выравниваение текста Label'а по центру
+		NameItem[i]->Transparent = false; // Прозрачность? Нет!
+        
+		NameItem[i]->OnClick = LabelNameClick; // Задаем событие по клику на Label[i]. При клике выводится вторая форма для редактирования выбранной вещи
+		NameItem[i]->OnMouseEnter = ImageFontMouseEnter;
+		NameItem[i]->OnMouseLeave = ImageFontMouseLeave;
+		//NameItem[i]->Visible = true;
+        // Задаем свойства выделительной рамки
+		SelectBorderImage[i]->Width = ImageFontWidth + 20;
+		SelectBorderImage[i]->Height = ImageFontWidth + 34;
+		SelectBorderImage[i]->Stretch = true; // Растянуть картинку по кроям Image[i]? Да!
+		SelectBorderImage[i]->Name = "SelectBorder"+IntToStr(i);
+		tmpPNG->LoadFromResourceName((unsigned int)h, IniFile->ReadString("Color", "ColorSelectedBorder", "SelectBorder")); // Тащим .png с индентификатором "SelectBorder" рисунок из дискриптора нашей библы
+		SelectBorderImage[i]->Picture->Assign(tmpPNG);
+		SelectBorderImage[i]->Tag = ADOQuery1->Fields->FieldByName("ID")->AsInteger; // Задаем нашему объекту номер из поля "ID"
+		SelectBorderImage[i]->Visible = false;
+
+        // Задаем свойства чекбоксам
+		SelectThings[i]->Name = "SelectThings"+IntToStr(i);
+		SelectThings[i]->Caption = "";
+		SelectThings[i]->Width = 13;
+		SelectThings[i]->Height = 13;
+		SelectThings[i]->Tag = ADOQuery1->Fields->FieldByName("ID")->AsInteger; // Задаем нашему объекту номер из поля "ID"
+		SelectThings[i]->Visible = false;
+		SelectThings[i]->OnClick = CheckBoxClick;
+
+		ADOQuery1->Next(); // Идем дальше по строкам таблицы
+
+		i2++; // Увеличиваем позицию по Left
+	}
+	LoadFontImages(); // Функция грузит лицевые картинки
+	ADOQuery1->FindFirst();
+	int AllCost = 0;
+	for(int i = 0; i < ADOQuery1->RecordCount; i++)
+	{
+		AllCost += ADOQuery1->Fields->FieldByName("Cost")->AsInteger;
+		ADOQuery1->FindNext();
+	}
+	if(ComboBox1->ItemIndex == 0)
+	{
+		Label2->Caption = "Общая стоимость всех вещей: " + IntToStr(AllCost);
+	}
+	else
+	{
+		Label2->Caption = "Стоимость вещей выбранной категории: " + IntToStr(AllCost);
+	}
+    Form1->Label3->Caption = "Средства: " + IniFile->ReadString("Resource", "ofMonth", "0");
+	FormResize(NULL); // Вызываем собитие при изменение формы
+}
+//---------------------------------------------------------------------------
+//					 		 Загрузка картинок                             --
+//---------------------------------------------------------------------------
+void __fastcall TForm1::LoadFontImages()
+{
+	// Функция загружает лицевую картинку каждой вещи. Если лицевая картинка не установлена, то
+	// загружается первая картинка, если картинки вообще есть. Если никаких картинок нет, то
+	// грузим и библиотеки картинку "изображение отсутствует".
+	ADOQuery2->Active = false;
+	ADOQuery2->SQL->Text = "SELECT * FROM Things;";
+	ADOQuery2->SQL->Text = NameOfCategory;
+	ADOQuery2->Active = true;
+	ADOQuery2->First();
+	for(int i = 1; FindComponent("ImageFont"+IntToStr(i)); i++)
+	{
+		if(ADOQuery2->Fields->FieldByName("Images")->AsString != "")
+		{            
+			if(ADOQuery2->Fields->FieldByName("FaceImage")->AsString != "")
+			{
+				ImageFont[i]->Picture->LoadFromFile(ADOQuery2->Fields->FieldByName("FaceImage")->AsString);
+				ImageFont[i]->OnClick = ImgEditClick;
+			}
+			else
+			{
+				AnsiString tmp = "";
+				for(int j = 1; j <= ADOQuery2->Fields->FieldByName("Images")->AsAnsiString.Length(); j++)
+				{
+					if(ADOQuery2->Fields->FieldByName("Images")->AsString[j] != '*')
+					{
+						tmp += ADOQuery2->Fields->FieldByName("Images")->AsString[j];
+					}
+					else
+					{
+						ImageFont[i]->Picture->LoadFromFile("load\\"+tmp);
+						break;
+					}
+				}
+			}			
+		}
+		else
+		{
+			ImageFont[i]->OnClick = NULL;
+			tmpPNG->LoadFromResourceName((unsigned int)h, "NoImage"); // Вытаскиваем .png из нашей библиотеки
+			ImageFont[i]->Picture->Assign(tmpPNG); // Загружаем картинку (Должна быть картинка из поля "Images")
+		}
+        ADOQuery2->Next();
+	}
+}
+
+//---------------------------------------------------------------------------
+//				Событие при изменении рамеров формы                        --
+//---------------------------------------------------------------------------
+void __fastcall TForm1::FormResize(TObject *Sender)
+{
+	// При изменение размеров формы, объекты расположенные в динамической сетке, будут менять твое положение (Сдвигаться ниже)
+	// Т.е. объекты не будут выходить за пределы ширины ScrollBox'а
+	ADOQuery1->Active = false;
+	ADOQuery1->SQL->Strings[0] = NameOfCategory;
+	ADOQuery1->Active = true;
+	ScrollBox1->VertScrollBar->Position = 0; // Вертикальный скролл поднимаем на верх
+	ScrollBox1->Width = Form1->ClientWidth - (ScrollBox1->Left - 1);  // Изменение шиирны ScrollBox'а вместе с формой
+	ScrollBox1->Height = Form1->ClientHeight - (ScrollBox1->Top - 1)-15; // Изменение высоты ScrollBox'а вместе с формой
+	int columntop = 0, i2 = 1;
+
+	// подстраиваем сетку с объектами под шиирну ScrollBox'а
+	for(int i = 1; i <= ADOQuery1->RecordCount; i++) // Атоматическое перемещение не убирающихся объектов
+	{
+		SelectBorderImage[i]->Top = TopInterval * columntop;
+		SelectBorderImage[i]->Left = (ImageFontWidth + 22) * (i2 - 1);
+
+		ImageFont[i]->Top = 10 + TopInterval * columntop;
+		ImageFont[i]->Left = 10 + (ImageFontWidth + 22) * (i2 - 1);
+
+		NameItem[i]->Top = interval + TopInterval * columntop;
+		NameItem[i]->Left = 10 + (ImageFontWidth + 22) * (i2 - 1);
+
+		SelectThings[i]->Top = 20 + TopInterval * columntop;
+		SelectThings[i]->Left = ImageFontWidth - 10 + (ImageFontWidth + 22) * (i2 - 1);
+
+		if(ImageFont[i]->Left+(ImageFontWidth + 22) * 2 >= ScrollBox1->Width)
+		{
+			columntop++; // Для переноса объектов вниз (Увеличиваем Top)
+			i2 = 0; // Для переноса объектов влево (Уменьшаем Left)
+		}
+
+		i2++;
+	}
+
+	Form1->Constraints->MinHeight = 320;
+	Form1->Constraints->MinWidth = 500;
+
+	Label2->Top = Form1->ClientHeight - Label2->Height;
+	Label2->Left = 10;
+	Label2->Font->Color = clRed;
+
+    Label3->Top = Form1->ClientHeight - Label3->Height;
+    Label3->Left =  20 + Label2->Width;
+}
+//---------------------------------------------------------------------------
+void __fastcall TForm1::ScrollBox1MouseWheel(TObject *Sender, TShiftState Shift,
+		  int WheelDelta, TPoint &MousePos, bool &Handled)
+{
+	// Прокрутка ScrollBox'а колесиком мыши
+	ScrollBox1->VertScrollBar->Position -= WheelDelta/SpeedScrollBox1;
+}
+//---------------------------------------------------------------------------
+void __fastcall TForm1::FormShow(TObject *Sender)
+{
+    // Устанавливаем ширину и высоту формы из файла настроек
+	Form1->ClientWidth = IniFile->ReadInteger("Form", "ClientWidth", 1175);
+	Form1->ClientHeight = IniFile->ReadInteger("Form", "ClientHeight", 567);
+	SelectItemCombo = ComboBox1->ItemIndex;
+    
+	// Переводим фокус на ScrollBox
+	ScrollBox1->SetFocus();
+
+}
+//---------------------------------------------------------------------------
+// 				   Когда выбираем элемент в ComboBox'е                     --
+//---------------------------------------------------------------------------
+void __fastcall TForm1::ComboBox1Change(TObject *Sender)
+{
+	// Очистка массивов перед выбором категорий
+	// Для того, чтобы вывести вещи из какой-то котегории
+	// Нам надо сначала убрать ранее созданные объекты,
+    // после выбора пункта комбобокса удаляем старые объекты,
+    // делаем запрос к БД и создаем новые объекты для вещей из запроса.
+	for(int i = 1; FindComponent("ImageFont"+IntToStr(i)); i++)
+	{
+		ImageFont[i]->Free();
+		NameItem[i]->Free();
+		SelectBorderImage[i]->Free();
+		SelectThings[i]->Free();
+	}
+	Form2->MenuSelect->Caption = "Выделить";
+	Form2->MenuDelete->Enabled = false;
+	// Выбор категории из ComboBox1
+	// Альтернатива switch'у
+	for(int i = 0; i < ComboBox1->Items->Count; i++)
+	{
+        // Нулевой элемент всегда должен быть "Все категории"
+		if(ComboBox1->ItemIndex == 0)
+		{
+			NameOfCategory = "SELECT * FROM things";
+			OutputThings();
+			break;
+		}
+		else
+		{
+			NameOfCategory = "SELECT * FROM things WHERE Category='" + ComboBox1->Text + "'";
+			OutputThings();
+			break;
+		}
+
+	}
+	ScrollBox1->SetFocus(); // Переводим фокус на ScrollBox
+	SelectItemCombo = ComboBox1->ItemIndex;
+
+}
+//---------------------------------------------------------------------------
+void __fastcall TForm1::Button1Click(TObject *Sender)
+{
+    // Когда добавляем новую запись
+	ClickFlag = 0;
+	Form2->ResetQuery1();
+	Form2->ShowModal();
+	Form2->Position = poMainFormCenter;
+}
+//---------------------------------------------------------------------------
+
+void __fastcall TForm1::FormClose(TObject *Sender, TCloseAction &Action)
+{
+    // при закрытии формы сохраняем настройик и удаляем некоторые переменные
+    FileSetAttr("DBThings.INI", faHidden);
+    if(Form1->WindowState != wsMaximized)
+    {
+        IniFile->WriteInteger("Form", "ClientWidth", Form1->ClientWidth);
+        IniFile->WriteInteger("Form", "ClientHeight", Form1->ClientHeight);
+    }	
+	IniFile->WriteInteger("Size", "IconSizeThings", IconSizeThings);
+	IniFile->WriteInteger("Speed", "SpeedScrollBox1", SpeedScrollBox1);
+    IniFile->WriteDate("Date", "LastDateRun", Now());
+    IniFile->WriteTime("Date", "LastTimeRun", Time());    
+
+	// При закрытии формы освобождаем память от созданных приложением переменных
+	delete tmpPNG, ImageFont, NameItem, SelectItemCombo, array_category,
+		   SpeedScrollBox1, NameOfCategory, flag, h, ClickFlag;
+	tmpPNG = NULL;
+}
+//---------------------------------------------------------------------------
+//		Событие при нажатии на динамически созданный объект TImage         --
+//---------------------------------------------------------------------------
+void __fastcall TForm1::ImgEditClick(TObject *Sender)
+{
+	// При нажатии на изображение мы увеличиваем его
+    Form3->Image1->Picture->Assign(((TImage*)Sender)->Picture); // Втираем Image1'у картинку из Image на который нажали
+	Form3->ShowModal(); // Открываем 3ю форму в модальном режиме
+	Form3->Position = poMainFormCenter; // Задаем позиционирование по центру главной формы
+}
+//---------------------------------------------------------------------------
+//		Событие при нажатии на динамически созданный объект типа TLabel    --
+//---------------------------------------------------------------------------
+void __fastcall TForm1::LabelNameClick(TObject *Sender)
+{
+	// Когда нажимаем на название вещи, то открываем формы для
+    // редактирования вещи, на название которой нажили
+	ClickFlag = 1;  // Устанавливаем флаг для того, чтобы во второй форме определить, что пользователь нажал на название объекта для его редактирования
+	ADOQuery1->Active = false; // Посылаем запрос на выбор вещи, на которую нажал пользователь ADOQuery1->SQL->Strings[0]
+	ADOQuery1->SQL->Text = "SELECT * FROM Things WHERE `ID`=" + IntToStr(((TLabel*)Sender)->Tag); // Свойство Tag должно быть = полю "ID"
+	ADOQuery1->Active = true;
+	Form2->ShowModal(); // Открываем 2у фому в модальном режиме
+	Form2->Position = poMainFormCenter; // Задаем позиционирование по центру главной формы
+}
+//--------------------------------------------------------------------------- 
+TImage *DeleteObj;
+void __fastcall TForm1::DeleteClick(TObject *Sender)
+{
+    // Когда нажимаем на пункт "Удалить" контекстного меню лицевого изображения
+	ADOQuery1->Active = false;
+	ADOQuery1->SQL->Strings[0] = "DELETE FROM things WHERE `ID`="+IntToStr(DeleteObj->Tag)+";";
+	ADOQuery1->ExecSQL();
+	delete ImageFont[DeleteObj->Tag];
+	delete NameItem[DeleteObj->Tag];
+	delete SelectBorderImage[DeleteObj->Tag];
+	delete SelectThings[DeleteObj->Tag];
+    Form2->UpdateComboBox1(); // Обновляем список ComboBox1
+	Form2->ResetQuery1();
+	ComboBox1Change(Form1->ComboBox1);
+}
+//---------------------------------------------------------------------------
+void __fastcall TForm1::Label7ContextPopup(TObject *Sender, TPoint &MousePos,
+		  bool &Handled)
+{
+    // При вызывании меню запоминаем объект у которого вызвали меню
+	DeleteObj = ((TImage*)Sender);
+}
+//---------------------------------------------------------------------------
+
+void __fastcall TForm1::ImageFontMouseEnter(TObject *Sender)
+{
+	// Показываем рамку выделения, когда курсор мышм попадает
+	// на объекты ImageFont и NameItem
+	if(((TObject*)Sender) == ((TLabel*)Sender))
+	{
+		((TLabel*)Sender)->Color = IniFile->ReadInteger("Color", "EnterColorName", 0xe75a0c);
+	}
+	for(int i = 1; FindComponent("ImageFont"+IntToStr(i)); i++)
+	{
+		if(SelectBorderImage[i]->Tag == ((TImage*)Sender)->Tag)
+		{
+			SelectBorderImage[i]->Visible = true;
+			break;
+		}
+	}
+}
+//---------------------------------------------------------------------------
+
+void __fastcall TForm1::ImageFontMouseLeave(TObject *Sender)
+{
+	// скрываем рамку веделения после выхода курсора мышки
+	// Из объектов ImageFont и NameItem
+	if(((TObject*)Sender) == ((TLabel*)Sender))
+	{
+		((TLabel*)Sender)->Color = IniFile->ReadInteger("Color", "BGColorName", clGradientInactiveCaption); // Цвет фона Label'а
+	}
+	for(int i = 1; FindComponent("ImageFont"+IntToStr(i)); i++)
+	{
+		if(SelectBorderImage[i]->Tag == ((TImage*)Sender)->Tag)
+		{
+			SelectBorderImage[i]->Visible = false;
+			break;
+		}
+	}
+}
+//---------------------------------------------------------------------------
+
+void __fastcall TForm1::FormMouseDown(TObject *Sender, TMouseButton Button, TShiftState Shift,
+          int X, int Y)
+{
+    // Перемещение формы
+	long SC_DRAGMOVE = 0xF012;
+	if(Button == mbLeft)
+	{
+		ReleaseCapture();
+        SendMessage(Handle, WM_SYSCOMMAND, SC_DRAGMOVE, 0);
+	}
+}
+//---------------------------------------------------------------------------
+
+void __fastcall TForm1::ImageOptionClick(TObject *Sender)
+{
+    // Нажитие на кнопку "настройки"
+	Form4->ShowModal();
+	Form4->Position = poMainFormCenter;
+}
+//---------------------------------------------------------------------------
+void __fastcall TForm1::CheckBoxClick(TObject *Sender)
+{
+    // Нажатие на чекбоксы для выделения вещей
+    // При нажатии на чекбокс создаем массив и запоменаем а него
+    // ID вещи на которой располагается нажатый чекбокс
+    // Когда убираем галку с чекбокса, также убираем ID из массива
+	TCheckBox *CheckBox = ((TCheckBox*)Sender);
+	if(CheckBox->Checked)
+	{
+		for(int i = 1; FindComponent("SelectBorder"+IntToStr(i)); i++)
+		{
+            ImageFont[i]->OnMouseEnter = NULL;
+			ImageFont[i]->OnMouseLeave = NULL;
+			NameItem[i]->OnMouseEnter = NULL;
+			NameItem[i]->OnMouseLeave = NULL;
+			if(SelectBorderImage[i]->Tag == CheckBox->Tag)
+			{
+				SelectedItems.push_back(ImageFont[i]->Tag); // Запоминаем ID выделенных вещей в массив
+				SelectBorderImage[i]->Visible = true;
+				break;
+			}
+		}
+
+		//SelectBorderImage[]
+	}
+	else
+	{
+    	for(int i = 1; FindComponent("SelectBorder"+IntToStr(i)); i++)
+		{
+            
+			for(int j = 0; j < SelectedItems.size(); j++)
+			{
+                // Удаляем из массива ID который добавили ранее при выключении Чекбокса
+				if(CheckBox->Tag == SelectedItems[j])
+				{
+					// С помощью erase удаляем элемент позиции SelectedItems.begin()+j
+					//SelectedItems.erase(SelectedItems.begin()+j);
+                    SelectedItems[j] = NULL;
+				}
+			}
+			if(SelectBorderImage[i]->Tag == CheckBox->Tag)
+			{
+                ImageFont[i]->OnMouseEnter = ImageFontMouseEnter;
+                ImageFont[i]->OnMouseLeave = ImageFontMouseLeave;
+                NameItem[i]->OnMouseEnter = ImageFontMouseEnter;
+                NameItem[i]->OnMouseLeave = ImageFontMouseLeave;
+				SelectBorderImage[i]->Visible = false;
+				break;
+			}
+		}
+	}
+}
+//---------------------------------------------------------------------------
+
+void __fastcall TForm1::Button2Click(TObject *Sender)
+{
+    // Пункт "Выделить" меню "редактировать" создает чекбоксы у каждой вещи
+    // для их выделения. Выделенные вещи можно удалить.
+	if(Form2->MenuSelect->Caption == "Выделить")
+	{
+		for(int i = 1; FindComponent("SelectThings"+IntToStr(i)); i++)
+		{
+			if(SelectThings[i]->Checked)
+			{
+				SelectThings[i]->Checked = false;
+            }
+			SelectThings[i]->Visible = true;
+		}
+		Form2->MenuSelect->Caption = "Отменить";
+		Form2->MenuDelete->Enabled = true;
+	}
+	else
+	{
+		for(int i = 1; FindComponent("ImageFont"+IntToStr(i)); i++)
+		{
+			//SelectBorderImage[i]->Name = "SelectBorder"+IntToStr(i);
+			if(SelectBorderImage[i]->Visible)
+			{
+            	SelectBorderImage[i]->Visible = false;
+			}
+			ImageFont[i]->OnMouseEnter = ImageFontMouseEnter;
+			ImageFont[i]->OnMouseLeave = ImageFontMouseLeave;
+			NameItem[i]->OnMouseEnter = ImageFontMouseEnter;
+			NameItem[i]->OnMouseLeave = ImageFontMouseLeave;
+		}
+
+		for(int i = 1; FindComponent("SelectThings"+IntToStr(i)); i++)
+		{
+			SelectThings[i]->Visible = false;
+		}
+		Form2->MenuSelect->Caption = "Выделить";
+		Form2->MenuDelete->Enabled = false;
+	}
+	ScrollBox1->SetFocus();
+
+}
+//---------------------------------------------------------------------------
+
+void __fastcall TForm1::ButtonDeleteClick(TObject *Sender)
+{
+	// Удаляем выделенные вещи
+	if(SelectedItems[0] != NULL)
+	{
+		if(ADOQuery1->Active)
+		{
+			ADOQuery1->Active = false;
+		}
+		AnsiString SelectWhere = "";
+		for(int i = 0; i < SelectedItems.size(); i++)
+		{
+			SelectWhere += " OR `ID`=" + IntToStr(SelectedItems[i]); // Собираем условие
+			// Удаляем лишние компоненты в программе
+			delete ImageFont[SelectedItems[i]];
+			delete NameItem[SelectedItems[i]];
+			delete SelectBorderImage[SelectedItems[i]];
+			delete SelectThings[SelectedItems[i]];
+		}
+		// Пихаем запрос
+		ADOQuery1->SQL->Text = "DELETE FROM things WHERE" + SelectWhere.SubString(4, SelectWhere.Length()) + ";";
+		ADOQuery1->ExecSQL();
+
+		Form2->UpdateComboBox1(); // Обновляем список ComboBox1
+		Form2->ResetQuery1(); // Возвращаем квери в исходное положение, которое было до этого
+		ComboBox1Change(Form1->ComboBox1); // Вызываем событие пересоздание всех объектов грубо говоря
+		ScrollBox1->SetFocus(); // Внимание на скроллбокс
+
+		for(int i = 0; i < SelectedItems.size(); i++)
+		{
+			SelectedItems[i] = 0; // очищаем массив
+		}
+	}
+	else
+	{
+        ShowMessage("Ни одна из вещей не выбрана!");
+	}
+
+	
+}
+//---------------------------------------------------------------------------
+
